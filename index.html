@@ -1,37 +1,4 @@
-
-                        <!DOCTYPE html>
-                        <html lang="en">
-                        <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-							<style>
-								body {
-									background-color: white; /* Ensure the iframe has a white background */
-								}
-
-								
-        body {
-            font-family: 'Gaegu', cursive;
-            background-color: #FFF9E6;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .bouncy {
-            animation: bounce 2s infinite;
-        }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        .click-bounce:active {
-            transform: scale(0.95);
-            transition: transform 0.05s;
-        }
-    
-
-							</style>
-                        </head>
-                        <body>
-                            <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -272,7 +239,7 @@
                 </p>
                 <label class="click-bounce block w-full bg-indigo-500 hover:bg-indigo-600 text-white text-xl font-bold py-4 px-4 rounded-2xl shadow-md cursor-pointer text-center">
                     📸 사진 찍어서 QR 인식하기
-                    <input type="file" accept="image/*" capture="environment" class="hidden" onchange="scanLocalFile(event)">
+                    <input type="file" accept="image/*" capture="user" class="hidden" onchange="scanLocalFile(event)">
                 </label>
             </div>
 
@@ -437,13 +404,11 @@
             }
         }
 
-        /* --- 📷 QR 카메라 스캐너 제어 (방탄 Fallback 추가됨) --- */
+        /* --- 📷 QR 카메라 스캐너 제어 (★전면 카메라 전용★) --- */
         async function openScanner() {
-            // UI 초기화 (이전 실패 이력 가리기)
             document.getElementById('reader-container').classList.remove('hidden');
             document.getElementById('fallback-container').classList.add('hidden');
 
-            // 기존 실행 중인 스캐너 안전 종료
             if (html5QrcodeScanner) {
                 try {
                     await html5QrcodeScanner.stop();
@@ -451,7 +416,6 @@
                 html5QrcodeScanner = null;
             }
 
-            // 카메라 화면 팝업 열기 (이번엔 실패해도 절대 닫히지 않음!)
             document.getElementById('scanner-modal').classList.remove('hidden');
             
             setTimeout(() => {
@@ -466,14 +430,13 @@
                         aspectRatio: 1.0
                     };
                     
+                    // facingMode를 "user"로 설정하여 전면(셀프) 카메라가 작동하도록 함
                     html5QrcodeScanner.start(
-                        { facingMode: "environment" }, 
+                        { facingMode: "user" }, 
                         config,
                         onScanSuccess
                     ).catch(err => {
                         console.warn("실시간 스트리밍 불가 -> 촬영 대체 모드 작동 : ", err);
-                        
-                        // 실시간 스트림 실패 시 화면을 닫지 않고, 수동 촬영 버튼 UI로 자동 전환!
                         document.getElementById('reader-container').classList.add('hidden');
                         document.getElementById('fallback-container').classList.remove('hidden');
                     });
@@ -485,7 +448,6 @@
             }, 300);
         }
 
-        // 수동으로 촬영한 사진 분석하여 QR코드 리딩하기 (100% 무조건 성공)
         function scanLocalFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -496,19 +458,18 @@
                 didOpen: () => { Swal.showLoading(); }
             });
 
-            // 임시 분석용 디코더 생성
             const tempDecoder = new Html5Qrcode("reader");
             tempDecoder.scanFile(file, true)
                 .then(decodedText => {
                     Swal.close();
-                    closeScanner(); // 스캐너 창 닫기
-                    addProductToCart(decodedText); // 장바구니 추가
+                    closeScanner();
+                    addProductToCart(decodedText);
                 })
                 .catch(err => {
                     Swal.close();
                     Swal.fire({
                         title: '인식 실패!',
-                        text: '사진 속에서 QR코드를 찾을 수 없습니다. 초점을 맞추어 밝은 곳에서 다시 촬영해 주세요.',
+                        text: '사진 속에서 QR코드를 찾을 수 없습니다. 초점을 맞춰 밝은 곳에서 다시 찍어주세요.',
                         icon: 'error'
                     });
                 });
@@ -590,7 +551,6 @@
             updateCartUI();
         }
 
-        // 이미지 화질 압축 및 크기 리사이징
         function processImage(file, callback) {
             if (!file) {
                 callback(null);
@@ -667,7 +627,6 @@
             });
         }
 
-        // 새 상품 등록하기
         function saveProduct(e) {
             e.preventDefault();
             
@@ -681,18 +640,16 @@
                 return;
             }
 
-            // QR키 정규식 검사
             const safeKeyRegex = /^[a-zA-Z0-9\-_]+$/;
             if (!safeKeyRegex.test(customKey)) {
                 Swal.fire({
                     title: 'QR 코드 이름 오류!',
-                    html: `QR 글자에는 <b class="text-red-500">영문자, 숫자, 하이픈(-), 언더바(_)</b>만 입력할 수 있습니다.<br>한글, 공백(띄어쓰기) 및 기호는 안 돼요!`,
+                    html: `QR 글자에는 <b class="text-red-500">영문자, 숫자, 하이픈(-), 언더바(_)</b>만 입력할 수 있습니다.`,
                     icon: 'error'
                 });
                 return;
             }
 
-            // 중복 검사
             if (products[customKey]) {
                 Swal.fire({ title: '이미 사용 중인 QR 글자!', text: '다른 QR 이름을 지어주세요.', icon: 'warning' });
                 return;
@@ -712,7 +669,6 @@
                     saveProductsToStorage();
                     renderAdminProducts();
                     
-                    // 입력 폼 비우기
                     document.getElementById('product-form').reset();
                     document.getElementById('p-emoji-val').value = "🧸";
                     document.getElementById('p-selected-emoji').innerText = "🧸";
@@ -744,7 +700,6 @@
             }
         }
 
-        // 수정 팝업 열기
         function openEditModal(key) {
             const item = products[key];
             if (!item) return;
@@ -767,7 +722,6 @@
             document.getElementById('edit-product-modal').classList.add('hidden');
         }
 
-        // 상품 정보 수정 완료
         function updateProduct(e) {
             e.preventDefault();
             const oldKey = document.getElementById('edit-old-key').value;
@@ -862,7 +816,6 @@
             });
         }
 
-        // 현재 상품 목록 출력
         function renderAdminProducts() {
             const listContainer = document.getElementById('admin-product-list');
             if(!listContainer) return;
@@ -901,7 +854,6 @@
             });
         }
 
-        /* --- 사운드 효과 --- */
         function playAudio(id) {
             try {
                 const audio = document.getElementById(id);
@@ -912,7 +864,7 @@
             } catch(e){}
         }
 
-        /* --- 데이터 백업 및 복구 기능 --- */
+        // 데이터 백업 기능
         function exportData() {
             try {
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
@@ -927,6 +879,7 @@
             }
         }
 
+        // 데이터 복구 기능
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -950,676 +903,3 @@
     </script>
 </body>
 </html>
-
-
-
-							<script>
-                            	
-        // 기본 상품 리스트
-        const defaultProducts = {
-            "gem-toy-bear": { name: "곰돌이 인형", price: 3, image: "https://images.unsplash.com/photo-1559251606-c623743a6d76?w=150" },
-            "gem-toy-car": { name: "멋진 자동차", price: 2, image: "https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?w=150" },
-            "gem-ice-cream": { name: "아이스크림", price: 1, image: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=150" }
-        };
-
-        const emojiList = ["🧸", "👑", "💎", "🚗", "🍦", "🍰", "🍭", "🍩", "🎁", "🎈", "🐱", "🐶", "🐰", "🦁", "🍎", "🍉", "🍕", "🍟", "🥤", "⚽", "🎨", "🎸", "📚", "🔑", "💍", "👓", "🦄", "🐼"];
-        let products = {};
-        let cart = [];
-        let html5QrcodeScanner = null;
-
-        // 브라우저 저장소 불러오기
-        function loadProducts() {
-            try {
-                const saved = localStorage.getItem('gem_kiosk_products');
-                if (saved) {
-                    products = JSON.parse(saved);
-                } else {
-                    products = { ...defaultProducts };
-                    localStorage.setItem('gem_kiosk_products', JSON.stringify(products));
-                }
-            } catch (e) {
-                console.warn("Storage blocked. Using memory storage.");
-                products = { ...defaultProducts };
-            }
-        }
-
-        function saveProductsToStorage() {
-            try {
-                localStorage.setItem('gem_kiosk_products', JSON.stringify(products));
-            } catch (e) {
-                console.error("Storage save failed.", e);
-            }
-        }
-
-        window.onload = function() {
-            loadProducts();
-            updateCartUI();
-            buildEmojiPickers();
-        };
-
-        // 이모지 피커 만들기
-        function buildEmojiPickers() {
-            const addContainer = document.getElementById('emoji-picker-container');
-            const editContainer = document.getElementById('edit-emoji-picker-container');
-            if(!addContainer || !editContainer) return;
-            
-            addContainer.innerHTML = '';
-            editContainer.innerHTML = '';
-
-            emojiList.forEach(emoji => {
-                const btnHTML = `<button type="button" onclick="selectEmoji('add', '${emoji}')" class="hover:bg-gray-100 p-1 rounded text-center text-3xl">${emoji}</button>`;
-                addContainer.insertAdjacentHTML('beforeend', btnHTML);
-
-                const btnEditHTML = `<button type="button" onclick="selectEmoji('edit', '${emoji}')" class="hover:bg-gray-100 p-1 rounded text-center text-3xl">${emoji}</button>`;
-                editContainer.insertAdjacentHTML('beforeend', btnEditHTML);
-            });
-        }
-
-        function selectEmoji(mode, emoji) {
-            if (mode === 'add') {
-                document.getElementById('p-emoji-val').value = emoji;
-                document.getElementById('p-selected-emoji').innerText = emoji;
-            } else {
-                document.getElementById('edit-emoji-val').value = emoji;
-                document.getElementById('edit-selected-emoji').innerText = emoji;
-            }
-        }
-
-        function toggleImageInput(mode) {
-            if (mode === 'add') {
-                const type = document.getElementById('p-img-type').value;
-                document.getElementById('add-emoji-box').style.display = type === 'emoji' ? 'block' : 'none';
-                document.getElementById('add-file-box').style.display = type === 'file' ? 'block' : 'none';
-            } else {
-                const type = document.getElementById('edit-img-type').value;
-                document.getElementById('edit-emoji-box').style.display = type === 'emoji' ? 'block' : 'none';
-                document.getElementById('edit-file-box').style.display = type === 'file' ? 'block' : 'none';
-            }
-        }
-
-        // 캔버스 기반 안전한 이모지 그림화
-        function convertEmojiToImage(emoji) {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = 150;
-                canvas.height = 150;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#FFEDF2';
-                ctx.beginPath();
-                ctx.arc(75, 75, 75, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.font = '90px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(emoji || "🎁", 75, 82);
-                return canvas.toDataURL('image/png');
-            } catch (err) {
-                return "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=150";
-            }
-        }
-
-        /* --- 키오스크 화면 제어 --- */
-        function openProductList() {
-            renderKioskProducts();
-            document.getElementById('product-list-modal').classList.remove('hidden');
-        }
-
-        function closeProductList() {
-            document.getElementById('product-list-modal').classList.add('hidden');
-        }
-
-        function renderKioskProducts() {
-            const grid = document.getElementById('kiosk-product-grid');
-            grid.innerHTML = '';
-
-            Object.keys(products).forEach(key => {
-                const item = products[key];
-                const buttonHTML = `
-                    <button onclick="addProductToCart('${key}')" class="click-bounce flex flex-col items-center bg-white hover:bg-pink-50 p-2 rounded-2xl border-2 border-yellow-200 shadow-sm transition-all w-full">
-                        <img src="${item.image}" class="w-16 h-16 object-cover rounded-xl border border-gray-100 mb-1 pointer-events-none">
-                        <span class="text-sm font-bold text-gray-800 truncate w-full text-center pointer-events-none">${item.name}</span>
-                        <span class="text-xs font-bold text-blue-600 mt-0.5 pointer-events-none">💎 ${item.price}개</span>
-                    </button>
-                `;
-                grid.insertAdjacentHTML('beforeend', buttonHTML);
-            });
-        }
-
-        function addProductToCart(key) {
-            const product = products[key];
-            if (product) {
-                cart.push({ key: key, ...product });
-                updateCartUI();
-                playAudio('sound-scan');
-
-                Swal.fire({
-                    title: `${product.name}`,
-                    text: `장바구니에 쏙 담았어요!`,
-                    imageUrl: product.image,
-                    imageWidth: 80,
-                    imageHeight: 80,
-                    timer: 800,
-                    showConfirmButton: false
-                });
-            } else {
-                Swal.fire({ title: '오류!', text: '찾을 수 없는 상품이에요.', icon: 'error' });
-            }
-        }
-
-        /* --- 📷 QR 카메라 스캐너 제어 (방탄 Fallback 추가됨) --- */
-        async function openScanner() {
-            // UI 초기화 (이전 실패 이력 가리기)
-            document.getElementById('reader-container').classList.remove('hidden');
-            document.getElementById('fallback-container').classList.add('hidden');
-
-            // 기존 실행 중인 스캐너 안전 종료
-            if (html5QrcodeScanner) {
-                try {
-                    await html5QrcodeScanner.stop();
-                } catch(e) {}
-                html5QrcodeScanner = null;
-            }
-
-            // 카메라 화면 팝업 열기 (이번엔 실패해도 절대 닫히지 않음!)
-            document.getElementById('scanner-modal').classList.remove('hidden');
-            
-            setTimeout(() => {
-                try {
-                    html5QrcodeScanner = new Html5Qrcode("reader");
-                    const config = { 
-                        fps: 10, 
-                        qrbox: function(width, height) {
-                            const minDim = Math.min(width, height);
-                            return { width: Math.floor(minDim * 0.7), height: Math.floor(minDim * 0.7) };
-                        },
-                        aspectRatio: 1.0
-                    };
-                    
-                    html5QrcodeScanner.start(
-                        { facingMode: "environment" }, 
-                        config,
-                        onScanSuccess
-                    ).catch(err => {
-                        console.warn("실시간 스트리밍 불가 -> 촬영 대체 모드 작동 : ", err);
-                        
-                        // 실시간 스트림 실패 시 화면을 닫지 않고, 수동 촬영 버튼 UI로 자동 전환!
-                        document.getElementById('reader-container').classList.add('hidden');
-                        document.getElementById('fallback-container').classList.remove('hidden');
-                    });
-                } catch (e) {
-                    console.error(e);
-                    document.getElementById('reader-container').classList.add('hidden');
-                    document.getElementById('fallback-container').classList.remove('hidden');
-                }
-            }, 300);
-        }
-
-        // 수동으로 촬영한 사진 분석하여 QR코드 리딩하기 (100% 무조건 성공)
-        function scanLocalFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            Swal.fire({
-                title: 'QR 코드를 읽고 있어요...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-
-            // 임시 분석용 디코더 생성
-            const tempDecoder = new Html5Qrcode("reader");
-            tempDecoder.scanFile(file, true)
-                .then(decodedText => {
-                    Swal.close();
-                    closeScanner(); // 스캐너 창 닫기
-                    addProductToCart(decodedText); // 장바구니 추가
-                })
-                .catch(err => {
-                    Swal.close();
-                    Swal.fire({
-                        title: '인식 실패!',
-                        text: '사진 속에서 QR코드를 찾을 수 없습니다. 초점을 맞추어 밝은 곳에서 다시 촬영해 주세요.',
-                        icon: 'error'
-                    });
-                });
-        }
-
-        function onScanSuccess(decodedText) {
-            closeScanner();
-            addProductToCart(decodedText);
-        }
-
-        function closeScanner() {
-            document.getElementById('scanner-modal').classList.add('hidden');
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.stop().then(() => { 
-                    html5QrcodeScanner.clear();
-                    html5QrcodeScanner = null; 
-                }).catch(()=>{
-                    html5QrcodeScanner = null;
-                });
-            }
-        }
-
-        /* --- 장바구니 목록 관리 --- */
-        function updateCartUI() {
-            const cartList = document.getElementById('cart-list');
-            const emptyMessage = document.getElementById('empty-message');
-            
-            cartList.querySelectorAll('.cart-item').forEach(el => el.remove());
-            
-            if (cart.length === 0) {
-                emptyMessage.classList.remove('hidden');
-                document.getElementById('total-gems').innerText = 0;
-                return;
-            }
-
-            emptyMessage.classList.add('hidden');
-            let total = 0;
-            
-            cart.forEach((item, index) => {
-                total += parseInt(item.price);
-                const div = document.createElement('div');
-                div.className = "cart-item flex justify-between items-center bg-pink-50 p-2 rounded-xl border border-pink-100";
-                div.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <img src="${item.image}" class="w-10 h-10 object-cover rounded-lg">
-                        <span class="text-lg font-bold text-gray-700">${item.name}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-md text-blue-600 font-bold">💎 ${item.price}개</span>
-                        <button onclick="removeFromCart(${index})" class="text-red-400 font-bold text-xs bg-white border border-red-200 px-1.5 py-0.5 rounded-md">빼기</button>
-                    </div>
-                `;
-                cartList.appendChild(div);
-            });
-
-            document.getElementById('total-gems').innerText = total;
-        }
-
-        function removeFromCart(index) {
-            cart.splice(index, 1);
-            updateCartUI();
-        }
-
-        function checkout() {
-            if (cart.length === 0) {
-                Swal.fire({ title: '장바구니가 비어 있어요!', icon: 'warning' });
-                return;
-            }
-            const total = document.getElementById('total-gems').innerText;
-            playAudio('sound-success');
-
-            Swal.fire({
-                title: '🎉 멋지게 쇼핑 성공! 🎉',
-                html: `<p class="text-2xl">보석 <b class="text-indigo-600">${total}개</b>를 지불했습니다.</p>`,
-                icon: 'success'
-            });
-
-            cart = [];
-            updateCartUI();
-        }
-
-        // 이미지 화질 압축 및 크기 리사이징
-        function processImage(file, callback) {
-            if (!file) {
-                callback(null);
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 120;
-                        const scale = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scale;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        callback(canvas.toDataURL('image/jpeg', 0.5));
-                    } catch (e) {
-                        callback(null);
-                    }
-                }
-                img.onerror = function() { callback(null); };
-                img.src = e.target.result;
-            }
-            reader.onerror = function() { callback(null); };
-            reader.readAsDataURL(file);
-        }
-
-        /* --- 점장님 모드 제어 --- */
-        function enterAdminMode() {
-            Swal.fire({
-                title: '점장님 비밀번호를 쓰세요',
-                input: 'password',
-                showCancelButton: true,
-                confirmButtonText: '확인',
-                cancelButtonText: '취소'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    if (result.value === '1234') {
-                        document.getElementById('kiosk-screen').classList.add('hidden');
-                        document.getElementById('admin-screen').classList.remove('hidden');
-                        renderAdminProducts();
-                    } else {
-                        Swal.fire({ title: '틀렸어요!', icon: 'error' });
-                    }
-                }
-            });
-        }
-
-        function exitAdminMode() {
-            document.getElementById('admin-screen').classList.add('hidden');
-            document.getElementById('kiosk-screen').classList.remove('hidden');
-        }
-
-        function resetAllProducts() {
-            Swal.fire({
-                title: '정말 초기화할까요?',
-                text: '모든 정보가 지워지고 기본 상태로 되돌아갑니다.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: '초기화 진행',
-                cancelButtonText: '취소'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    try { localStorage.removeItem('gem_kiosk_products'); } catch(e){}
-                    products = { ...defaultProducts };
-                    saveProductsToStorage();
-                    renderAdminProducts();
-                    Swal.fire('완료!', '가게가 깨끗해졌습니다.', 'success');
-                }
-            });
-        }
-
-        // 새 상품 등록하기
-        function saveProduct(e) {
-            e.preventDefault();
-            
-            const name = document.getElementById('p-name').value.trim();
-            const priceVal = document.getElementById('p-price').value;
-            const customKey = document.getElementById('p-qr').value.trim();
-            const imgType = document.getElementById('p-img-type').value;
-
-            if (!name || !priceVal || !customKey) {
-                Swal.fire({ title: '입력 오류', text: '모든 빈칸을 채워주세요.', icon: 'warning' });
-                return;
-            }
-
-            // QR키 정규식 검사
-            const safeKeyRegex = /^[a-zA-Z0-9\-_]+$/;
-            if (!safeKeyRegex.test(customKey)) {
-                Swal.fire({
-                    title: 'QR 코드 이름 오류!',
-                    html: `QR 글자에는 <b class="text-red-500">영문자, 숫자, 하이픈(-), 언더바(_)</b>만 입력할 수 있습니다.<br>한글, 공백(띄어쓰기) 및 기호는 안 돼요!`,
-                    icon: 'error'
-                });
-                return;
-            }
-
-            // 중복 검사
-            if (products[customKey]) {
-                Swal.fire({ title: '이미 사용 중인 QR 글자!', text: '다른 QR 이름을 지어주세요.', icon: 'warning' });
-                return;
-            }
-
-            const price = parseInt(priceVal);
-
-            Swal.fire({
-                title: '새 상품 등록하는 중...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-
-            const finalizeAdd = (finalImage) => {
-                try {
-                    products[customKey] = { name: name, price: price, image: finalImage };
-                    saveProductsToStorage();
-                    renderAdminProducts();
-                    
-                    // 입력 폼 비우기
-                    document.getElementById('product-form').reset();
-                    document.getElementById('p-emoji-val').value = "🧸";
-                    document.getElementById('p-selected-emoji').innerText = "🧸";
-                    toggleImageInput('add');
-
-                    Swal.fire({ title: '등록 완료!', text: '새 상품과 QR코드가 성공적으로 발급되었습니다.', icon: 'success', timer: 1200 });
-                } catch (storageErr) {
-                    Swal.fire({
-                        title: '용량 초과!',
-                        text: '이미지 종류를 이모지로 변경하여 다시 등록해보세요!',
-                        icon: 'error'
-                    });
-                }
-            };
-
-            if (imgType === 'emoji') {
-                const selectedEmoji = document.getElementById('p-emoji-val').value || "🧸";
-                const emojiImgUrl = convertEmojiToImage(selectedEmoji);
-                finalizeAdd(emojiImgUrl);
-            } else {
-                const imageFile = document.getElementById('p-image').files[0];
-                if (!imageFile) {
-                    Swal.fire({ title: '사진 없음!', text: '등록할 사진 파일을 첨부해 주세요.', icon: 'warning' });
-                    return;
-                }
-                processImage(imageFile, function(resizedImg) {
-                    finalizeAdd(resizedImg || convertEmojiToImage("📦"));
-                });
-            }
-        }
-
-        // 수정 팝업 열기
-        function openEditModal(key) {
-            const item = products[key];
-            if (!item) return;
-
-            document.getElementById('edit-old-key').value = key;
-            document.getElementById('edit-qr').value = key;
-            document.getElementById('edit-name').value = item.name;
-            document.getElementById('edit-price').value = item.price;
-            document.getElementById('edit-preview-img').src = item.image;
-            document.getElementById('edit-img-type').value = "keep";
-            document.getElementById('edit-image').value = "";
-            document.getElementById('edit-emoji-val').value = "🧸";
-            document.getElementById('edit-selected-emoji').innerText = "🧸";
-            
-            toggleImageInput('edit');
-            document.getElementById('edit-product-modal').classList.remove('hidden');
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-product-modal').classList.add('hidden');
-        }
-
-        // 상품 정보 수정 완료
-        function updateProduct(e) {
-            e.preventDefault();
-            const oldKey = document.getElementById('edit-old-key').value;
-            const newKey = document.getElementById('edit-qr').value.trim();
-            const name = document.getElementById('edit-name').value.trim();
-            const price = parseInt(document.getElementById('edit-price').value);
-            const imgType = document.getElementById('edit-img-type').value;
-
-            if (!products[oldKey]) return;
-
-            const safeKeyRegex = /^[a-zA-Z0-9\-_]+$/;
-            if (!safeKeyRegex.test(newKey)) {
-                Swal.fire({
-                    title: 'QR 코드 이름 오류!',
-                    html: `QR 글자에는 <b class="text-red-500">영문자, 숫자, 하이픈(-), 언더바(_)</b>만 쓸 수 있어요.`,
-                    icon: 'error'
-                });
-                return;
-            }
-
-            if (newKey !== oldKey && products[newKey]) {
-                Swal.fire({ title: '중복된 QR 글자!', text: '이미 등록되어 사용 중인 QR 이름입니다.', icon: 'warning' });
-                return;
-            }
-
-            Swal.fire({
-                title: '정보 수정하는 중...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-
-            const finalizeUpdate = (newImage) => {
-                try {
-                    const finalImg = newImage ? newImage : products[oldKey].image;
-
-                    if (newKey !== oldKey) {
-                        delete products[oldKey];
-                    }
-
-                    products[newKey] = {
-                        name: name,
-                        price: price,
-                        image: finalImg
-                    };
-
-                    saveProductsToStorage();
-                    renderAdminProducts();
-                    closeEditModal();
-                    Swal.fire({ title: '수정 완료!', icon: 'success', timer: 1200 });
-                } catch (storageErr) {
-                    Swal.fire({
-                        title: '저장 실패!',
-                        text: '이미지 방식을 이모지로 바꿔 용량을 줄여 보세요.',
-                        icon: 'error'
-                    });
-                }
-            };
-
-            if (imgType === 'keep') {
-                finalizeUpdate(null);
-            } else if (imgType === 'emoji') {
-                const selectedEmoji = document.getElementById('edit-emoji-val').value;
-                const emojiImgUrl = convertEmojiToImage(selectedEmoji);
-                finalizeUpdate(emojiImgUrl);
-            } else {
-                const imageFile = document.getElementById('edit-image').files[0];
-                if (!imageFile) {
-                    finalizeUpdate(null);
-                    return;
-                }
-                processImage(imageFile, function(resizedImg) {
-                    finalizeUpdate(resizedImg);
-                });
-            }
-        }
-
-        function deleteProduct(key) {
-            Swal.fire({
-                title: '정말 삭제할까요?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: '삭제',
-                cancelButtonText: '취소'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    delete products[key];
-                    saveProductsToStorage();
-                    renderAdminProducts();
-                    Swal.fire('삭제되었습니다!', '', 'success');
-                }
-            });
-        }
-
-        // 현재 상품 목록 출력
-        function renderAdminProducts() {
-            const listContainer = document.getElementById('admin-product-list');
-            if(!listContainer) return;
-            listContainer.innerHTML = '';
-
-            Object.keys(products).forEach(key => {
-                const item = products[key];
-                const div = document.createElement('div');
-                div.className = "flex items-center justify-between border-2 border-gray-100 p-4 rounded-2xl bg-white shadow-sm flex-wrap gap-4";
-                
-                const escapedKey = key.replace(/'/g, "\\'");
-                const qrImgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(key)}`;
-
-                div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <img src="${item.image}" class="w-16 h-16 object-cover rounded-xl border">
-                        <div>
-                            <p class="text-xl font-bold text-gray-800">${item.name}</p>
-                            <p class="text-sm text-blue-600 font-bold">💎 보석 ${item.price}개</p>
-                            <p class="text-[11px] text-gray-400">QR내용: <b class="text-pink-500">${key}</b></p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="flex flex-col items-center">
-                            <img src="${qrImgSrc}" class="w-16 h-16 border p-1 rounded bg-white shadow-sm" alt="QR코드">
-                            <span class="text-xs text-gray-500 mt-1">인쇄용 QR</span>
-                        </div>
-                        <div class="flex flex-col gap-1">
-                            <button type="button" onclick="openEditModal('${escapedKey}')" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold">수정</button>
-                            <button type="button" onclick="deleteProduct('${escapedKey}')" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold">삭제</button>
-                        </div>
-                    </div>
-                `;
-                
-                listContainer.appendChild(div);
-            });
-        }
-
-        /* --- 사운드 효과 --- */
-        function playAudio(id) {
-            try {
-                const audio = document.getElementById(id);
-                if (audio) {
-                    audio.currentTime = 0;
-                    audio.play().catch(()=>{});
-                }
-            } catch(e){}
-        }
-
-        /* --- 데이터 백업 및 복구 기능 --- */
-        function exportData() {
-            try {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(products));
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", dataStr);
-                downloadAnchor.setAttribute("download", "보석가게_상품데이터.json");
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
-            } catch (err) {
-                Swal.fire({ title: '오류!', text: '브라우저 정책상 내보내기가 차단되었습니다.', icon: 'error' });
-            }
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (typeof imported === 'object') {
-                        products = imported;
-                        saveProductsToStorage();
-                        renderAdminProducts();
-                        Swal.fire({ title: '불러오기 완료!', text: '기존의 가게 데이터를 완벽히 복구했습니다.', icon: 'success' });
-                    }
-                } catch (err) {
-                    Swal.fire({ title: '가져오기 실패!', text: '올바른 백업 전용 파일이 아닙니다.', icon: 'error' });
-                }
-            };
-            reader.readAsText(file);
-        }
-    
-
-							</script>
-                        </body>
-                        </html>
-                    
